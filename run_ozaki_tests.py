@@ -143,6 +143,15 @@ def _product_for_device(device):
     }.get(device, device)
 
 
+def _vendor_for_device(device):
+    return {
+        "apple": "Apple",
+        "snapdragon": "Qualcomm",
+        "amd": "AMD",
+        "host": "host",
+    }.get(device, device)
+
+
 def collect_results():
     global _DEVICES, _OVERALL_ROWS
     data = {}
@@ -171,9 +180,10 @@ def collect_results():
                 continue
             row_device = r.get("device", device)
             row_product = r.get("product", _product_for_device(row_device))
+            row_vendor = r.get("vendor", _vendor_for_device(row_device))
             data.setdefault((row_device, scheme, backend), []).append((float(t), float(err)))
             devices.append(row_device)
-            overall_rows.append(dict(r, device=row_device, product=row_product, source=rel))
+            overall_rows.append(dict(r, device=row_device, vendor=row_vendor, product=row_product, source=rel))
 
     _DEVICES = sorted(set(d for d in devices if d != "host"))
     _OVERALL_ROWS = overall_rows
@@ -209,11 +219,12 @@ def print_summary():
     # Column widths
     colw = 22
     device_w = 14
+    vendor_w = 12
     product_w = 22
     native_w = 12
     target_w = 10
     speedup_w = 24
-    header = ("device".ljust(device_w) +
+    header = ("device".ljust(device_w) + "vendor".ljust(vendor_w) +
               "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) +
               "".join(b.center(colw) for b in backends) +
               "best speedup vs CPU".center(speedup_w) +
@@ -227,7 +238,8 @@ def print_summary():
         for scheme in schemes:
             target, native = PRECISION_MAP.get(scheme, (scheme, "?"))
             product = _product_for_device(device)
-            row = (device.ljust(device_w) +
+            vendor = _vendor_for_device(device)
+            row = (device.ljust(device_w) + vendor.ljust(vendor_w) +
                    native.ljust(native_w) + target.ljust(target_w + 6))
             for backend in backends:
                 v = agg.get((device, scheme, backend))
