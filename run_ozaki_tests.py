@@ -213,10 +213,11 @@ def print_summary():
     native_w = 12
     target_w = 10
     speedup_w = 24
-    header = ("device".ljust(device_w) + "product".ljust(product_w) +
+    header = ("device".ljust(device_w) +
               "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) +
               "".join(b.center(colw) for b in backends) +
-              "best speedup vs CPU".center(speedup_w))
+              "best speedup vs CPU".center(speedup_w) +
+              "product".ljust(product_w))
     print("\n" + "=" * len(header))
     print("Speed (ms avg) / Error (max abs avg)")
     print("=" * len(header))
@@ -226,7 +227,7 @@ def print_summary():
         for scheme in schemes:
             target, native = PRECISION_MAP.get(scheme, (scheme, "?"))
             product = _product_for_device(device)
-            row = (device.ljust(device_w) + product.ljust(product_w) +
+            row = (device.ljust(device_w) +
                    native.ljust(native_w) + target.ljust(target_w + 6))
             for backend in backends:
                 v = agg.get((device, scheme, backend))
@@ -252,6 +253,7 @@ def print_summary():
             else:
                 speedup_cell = f"{best:.2f}x ({best_dev})"
             row += speedup_cell.center(speedup_w)
+            row += product.ljust(product_w)
             print(row)
     print("=" * len(header))
 

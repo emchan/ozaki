@@ -248,17 +248,17 @@ python bench\bench_ozaki_parts.py
 ```
 Speed (ms avg) / Error (max abs avg)
 ==========================================================================================================================================================
-device        product               native      target (emu)             cpu                   gpu                   npu            best speedup vs CPU   
+device        native      target (emu)             cpu                   gpu                   npu            best speedup vs CPU   product               
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
-amd           AMD Ryzen 7 7840HS    fp16        fp32              6.3 ms / 2.71e-03     4.2 ms / 2.71e-03     4.8 ms / 2.71e-03         1.51x (gpu)       
-amd           AMD Ryzen 7 7840HS    fp32        fp64              3.0 ms / 5.61e-15     3.1 ms / 5.61e-15     3.2 ms / 5.61e-15         0.98x (gpu)       
-amd           AMD Ryzen 7 7840HS    w8a16       fp16                     n/a                   n/a                   n/a                    n/a           
-apple         Apple M4              fp16        fp32              31.2 ms / 2.71e-03    35.7 ms / 2.71e-03    12.4 ms / 2.71e-03        2.52x (npu)       
-apple         Apple M4              fp32        fp64              1.0 ms / 6.38e-15     21.1 ms / 6.38e-15    2.0 ms / 1.40e-02         0.51x (npu)       
-apple         Apple M4              w8a16       fp16                     n/a                   n/a            0.2 ms / 2.34e-01             n/a           
-snapdragon    Snapdragon X1P64100   fp16        fp32                     n/a                   n/a                   n/a                    n/a           
-snapdragon    Snapdragon X1P64100   fp32        fp64                     n/a                   n/a                   n/a                    n/a           
-snapdragon    Snapdragon X1P64100   w8a16       fp16                     n/a                   n/a            0.1 ms / 1.83e-01             n/a           
+amd           fp16        fp32              6.3 ms / 2.71e-03     4.2 ms / 2.71e-03     4.8 ms / 2.71e-03         1.51x (gpu)       AMD Ryzen 7 7840HS    
+amd           fp32        fp64              3.0 ms / 5.61e-15     3.1 ms / 5.61e-15     3.2 ms / 5.61e-15         0.98x (gpu)       AMD Ryzen 7 7840HS    
+amd           w8a16       fp16                     n/a                   n/a                   n/a                    n/a           AMD Ryzen 7 7840HS    
+apple         fp16        fp32              31.2 ms / 2.71e-03    35.7 ms / 2.71e-03    12.4 ms / 2.71e-03        2.52x (npu)       Apple M4              
+apple         fp32        fp64              1.0 ms / 6.38e-15     21.1 ms / 6.38e-15    2.0 ms / 1.40e-02         0.51x (npu)       Apple M4              
+apple         w8a16       fp16                     n/a                   n/a            0.2 ms / 2.34e-01             n/a           Apple M4              
+snapdragon    fp16        fp32                     n/a                   n/a                   n/a                    n/a           Snapdragon X1P64100   
+snapdragon    fp32        fp64                     n/a                   n/a                   n/a                    n/a           Snapdragon X1P64100   
+snapdragon    w8a16       fp16                     n/a                   n/a            0.1 ms / 1.83e-01             n/a           Snapdragon X1P64100   
 ==========================================================================================================================================================
 
 ============================================================
@@ -266,9 +266,9 @@ CPU native GEMM capability (reference)
 ============================================================
 precision   time (ms)     TFLOPS    
 ------------------------------------------------------------
-fp16        47.03         0.001     
-fp32        1.46          0.023     
-fp64        7.31          0.005     
+fp16        58.75         0.001     
+fp32        3.59          0.009     
+fp64        1.70          0.020     
 ============================================================
 ```
 
