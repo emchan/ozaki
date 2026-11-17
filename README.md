@@ -241,3 +241,23 @@ python bench\bench_ozaki_parts.py
    other iGPUs (Intel Xe-MAX XMX, Mali), discrete AMD/NVIDIA GPUs (fp16/bf16 fp64
    emulation), and other NPUs (Arm Ethos, Google TPU, Intel NPU / Meteor Lake).
    (Apple Silicon M4 now evaluated — see `arch/apple/`.)
+
+
+## Aggregated results (from `run_ozaki_tests.py`)
+
+```
+Speed (ms avg) / Error (max abs avg)
+============================================================================================================
+device        native      target (emu)             cpu                   gpu                   npu          
+------------------------------------------------------------------------------------------------------------
+amd           fp16        fp32              6.3 ms / 2.71e-03     4.2 ms / 2.71e-03     4.8 ms / 2.71e-03   
+amd           fp32        fp64              3.0 ms / 5.61e-15     3.1 ms / 5.61e-15     3.2 ms / 5.61e-15   
+amd           w8a16       fp16                     n/a                   n/a                   n/a          
+apple         fp16        fp32              31.2 ms / 2.71e-03    35.7 ms / 2.71e-03    12.4 ms / 2.71e-03  
+apple         fp32        fp64              1.0 ms / 6.38e-15     21.1 ms / 6.38e-15    2.0 ms / 1.40e-02   
+apple         w8a16       fp16                     n/a                   n/a            0.2 ms / 2.34e-01   
+snapdragon    fp16        fp32                     n/a                   n/a                   n/a          
+snapdragon    fp32        fp64                     n/a                   n/a                   n/a          
+snapdragon    w8a16       fp16                     n/a                   n/a            0.0 ms / 1.96e-01   
+============================================================================================================
+```
