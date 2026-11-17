@@ -119,7 +119,7 @@ ozaki/
 │   ├── bench_ozaki_fp64_fp16.py
 │   ├── bench_ozaki_fp64_s.py
 │   └── bench_ozaki_parts.py
-├── run_tests.py                 # ozaki scheme harness (fp64_emu / fp32_emu)
+├── common/run_tests.py          # ozaki scheme harness (fp64_emu / fp32_emu)
 ├── summarize.py
 ├── results.json
 └── README.md                    # this file
@@ -132,7 +132,7 @@ ozaki/
 cd ozaki
 
 # scheme harness: fp64_emu (fp64 <- fp32) and fp32_emu (fp32 <- fp16), backends gpu + npu
-python run_tests.py
+python common/run_tests.py
 python summarize.py
 # capability benchmarks (backend names: cpu | gpu | npu)
 python bench\bench_gemm_fp16.py

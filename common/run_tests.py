@@ -2,7 +2,7 @@ import sys, time, json, warnings, os
 import numpy as np
 warnings.filterwarnings('ignore')
 sys.path.insert(0, r"C:\path\to\qnn_env\Lib\site-packages")
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from common import ozaki as O
 
 RNG = np.random.default_rng(12345)

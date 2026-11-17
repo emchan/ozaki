@@ -1,7 +1,7 @@
 import sys, time, json, warnings, os
 import numpy as np
 warnings.filterwarnings('ignore')
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from common import ozaki as O
 def create_backend(backend, M, K, N, dtype=np.float32, model_dir=None):
     if backend == 'cpu':
@@ -120,6 +120,6 @@ for case_name, (m,k,n) in CASES.items():
                 results.append({'case':case_name,'shape':[m,k,n],'scheme':scheme_name,'backend':backend,'s':s,'status':'error','error':repr(e)})
                 print(f"  {scheme_name} {backend}: ERROR {e}", flush=True)
 
-with open('arch/amd/results_amd.json','w') as f:
+with open('results_amd.json','w') as f:
     json.dump(results, f, indent=2)
-print("\nSaved arch/amd/results_amd.json")
+print("\nSaved results_amd.json")

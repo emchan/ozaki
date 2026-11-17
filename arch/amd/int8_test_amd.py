@@ -2,7 +2,7 @@ import os, sys
 backend = sys.argv[1] if len(sys.argv)>1 else 'cpu'
 if backend=='npu':
     os.environ["RYZEN_AI_INSTALLATION_PATH"]=r"C:\Program Files\RyzenAI\1.9.0"
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import numpy as np, onnx, onnxruntime as ort
 from onnx import helper, TensorProto
 
