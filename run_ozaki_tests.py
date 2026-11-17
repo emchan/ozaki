@@ -269,11 +269,12 @@ def print_cpu_native_capability():
         return
     m, k, n = 256, 256, 256
     rng = np.random.default_rng(0)
-    print("\n" + "=" * 60)
+    cpu_name = platform.processor() or platform.machine()
+    print("\n" + "=" * 72)
     print("CPU native GEMM capability (reference)")
-    print("=" * 60)
-    print(f"{'precision':<12}{'time (ms)':<14}{'TFLOPS':<10}")
-    print("-" * 60)
+    print("=" * 72)
+    print(f"{'precision':<12}{'time (ms)':<14}{'TFLOPS':<10}{'cpu / product':<30}")
+    print("-" * 72)
     for name, dtype in (("fp16", np.float16), ("fp32", np.float32), ("fp64", np.float64)):
         try:
             A = (rng.standard_normal((m, k)) * 0.5).astype(dtype)
@@ -287,10 +288,10 @@ def print_cpu_native_capability():
                 times.append(time.perf_counter() - t0)
             t = sorted(times)[len(times) // 2]
             tflops = (2.0 * m * k * n / t) / 1e12
-            print(f"{name:<12}{t * 1000:<14.2f}{tflops:<10.3f}")
+            print(f"{name:<12}{t * 1000:<14.2f}{tflops:<10.3f}{cpu_name:<30}")
         except Exception as e:
-            print(f"{name:<12}{'error':<14}{str(e)}")
-    print("=" * 60)
+            print(f"{name:<12}{'error':<14}{str(e):<10}{cpu_name:<30}")
+    print("=" * 72)
 
 
 def main():
