@@ -200,7 +200,8 @@ def print_summary():
     device_w = 14
     native_w = 12
     target_w = 10
-    header = "device".ljust(device_w) + "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) + "".join(b.center(colw) for b in backends)
+    speedup_w = 18
+    header = "device".ljust(device_w) + "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) + "".join(b.center(colw) for b in backends) + "best speedup vs CPU".center(speedup_w)
     print("\n" + "=" * len(header))
     print("Speed (ms avg) / Error (max abs avg)")
     print("=" * len(header))
@@ -217,6 +218,21 @@ def print_summary():
                 else:
                     cell = f"{v[0]:.1f} ms / {v[1]:.2e}"
                 row += cell.center(colw)
+            # Best-case speedup vs CPU emulation on GPU/NPU.
+            cpu_v = agg.get((device, scheme, "cpu"))
+            best = None
+            if cpu_v is not None:
+                for b in ("gpu", "npu"):
+                    v = agg.get((device, scheme, b))
+                    if v is not None and v[0] > 0:
+                        speedup = cpu_v[0] / v[0]
+                        if best is None or speedup > best:
+                            best = speedup
+            if best is None:
+                speedup_cell = "n/a"
+            else:
+                speedup_cell = f"{best:.2f}x"
+            row += speedup_cell.center(speedup_w)
             print(row)
     print("=" * len(header))
 
