@@ -25,10 +25,11 @@ matmul = helper.make_node('MatMul', ['A','Wdq'], ['C'])
 g = helper.make_graph([dq, cast, matmul], 'g', [A], [C], [init_wq, init_scale, init_zp])
 m = helper.make_model(g, opset_imports=[helper.make_opsetid('', 13)])
 m.ir_version = 9
-onnx.save(m, 'tmp_w8a16.onnx')
+os.makedirs('/tmp/ozaki',exist_ok=True)
+onnx.save(m, '/tmp/ozaki/tmp_w8a16.onnx')
 
 so=ort.SessionOptions(); so.log_severity_level=3
-sess=ort.InferenceSession('tmp_w8a16.onnx',so,providers=['VitisAIExecutionProvider'],provider_options=[{}])
+sess=ort.InferenceSession('/tmp/ozaki/tmp_w8a16.onnx',so,providers=['VitisAIExecutionProvider'],provider_options=[{}])
 X=np.random.randn(M,K).astype(np.float16)
 out=sess.run(None,{'A':X})[0]
 print('w8a16 NPU run OK', out.shape)

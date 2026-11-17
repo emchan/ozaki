@@ -20,12 +20,13 @@ node=helper.make_node('MatMul',['A','B'],['C'])
 g=helper.make_graph([node],'g',[A,B],[C])
 m=helper.make_model(g,opset_imports=[helper.make_opsetid('',13)])
 m.ir_version=9
-onnx.save(m,'tmp_npu.onnx')
+os.makedirs('/tmp/ozaki',exist_ok=True)
+onnx.save(m,'/tmp/ozaki/tmp_npu.onnx')
 
 opts = {"xclbin": xclbin}
 so = ort.SessionOptions()
 so.log_severity_level = 3
-sess = ort.InferenceSession('tmp_npu.onnx', so, providers=['VitisAIExecutionProvider'], provider_options=[opts])
+sess = ort.InferenceSession('/tmp/ozaki/tmp_npu.onnx', so, providers=['VitisAIExecutionProvider'], provider_options=[opts])
 X=np.random.randn(M,K).astype(np.float32); Y=np.random.randn(K,N).astype(np.float32)
 out=sess.run(None,{'A':X,'B':Y})[0]
 print('out shape', out.shape, 'ok')

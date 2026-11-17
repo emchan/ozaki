@@ -25,7 +25,7 @@ def _mil_dtype(npdt):
 
 
 class Backend:
-    def __init__(self, backend, M, K, N, dtype, model_dir="/tmp"):
+    def __init__(self, backend, M, K, N, dtype, model_dir="/tmp/ozaki"):
         if backend != "npu":
             raise ValueError(f"npu backend expected, got {backend}")
         if not _COREML_AVAILABLE:
@@ -61,5 +61,5 @@ class Backend:
         return np.array(out, dtype=self.dtype)
 
 
-def create_backend(backend, M, K, N, dtype=np.float32, model_dir="/tmp"):
+def create_backend(backend, M, K, N, dtype=np.float32, model_dir="/tmp/ozaki"):
     return Backend(backend, M, K, N, dtype, model_dir=model_dir)

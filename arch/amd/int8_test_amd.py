@@ -23,12 +23,13 @@ node=helper.make_node('MatMul',['A','B'],['C'])
 g=helper.make_graph([node],'g',[A,B],[C])
 m=helper.make_model(g,opset_imports=[helper.make_opsetid('',13)])
 m.ir_version=9
-onnx.save(m,'tmp_int8.onnx')
+os.makedirs('/tmp/ozaki',exist_ok=True)
+onnx.save(m,'/tmp/ozaki/tmp_int8.onnx')
 so=ort.SessionOptions(); so.log_severity_level=3
 if opts:
-    sess=ort.InferenceSession('tmp_int8.onnx',so,providers=providers,provider_options=opts)
+    sess=ort.InferenceSession('/tmp/ozaki/tmp_int8.onnx',so,providers=providers,provider_options=opts)
 else:
-    sess=ort.InferenceSession('tmp_int8.onnx',so,providers=providers)
+    sess=ort.InferenceSession('/tmp/ozaki/tmp_int8.onnx',so,providers=providers)
 X=np.random.randint(-4,4,(M,K),dtype=np.int8); Y=np.random.randint(-4,4,(K,N),dtype=np.int8)
 try:
     out=sess.run(None,{'A':X,'B':Y})[0]

@@ -92,6 +92,6 @@ for case_name, (m,k,n) in CASES.items():
             results.append({'case':case_name,'shape':[m,k,n],'scheme':scheme_name,'backend':backend,'s':s,'status':'error','error':repr(e)})
             print(f"  {scheme_name} {backend}: ERROR {e}", flush=True)
 
-with open('results_npu_amd.json','w') as f:
+with open('arch/amd/results/results_npu_amd.json','w') as f:
     json.dump(results, f, indent=2)
-print("\nSaved results_npu_amd.json")
+print("\nSaved arch/amd/results/results_npu_amd.json")

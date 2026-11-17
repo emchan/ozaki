@@ -48,6 +48,6 @@ for backend in ['gpu','npu']:
     except Exception as e:
         print(f"fp32_emu {backend}: ERROR {e}", flush=True)
 
-with open('results_dit_mac.json','w') as f:
+with open('arch/apple/results/results_dit_mac.json','w') as f:
     json.dump(results,f,indent=2)
-print("Saved results_dit_mac.json")
+print("Saved arch/apple/results/results_dit_mac.json")

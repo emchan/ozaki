@@ -21,7 +21,7 @@ class Backend:
             raise ValueError(f"cpu backend expected, got {backend}")
         if model_dir is None:
             import tempfile
-            model_dir = tempfile.gettempdir()
+            model_dir = "/tmp/ozaki"
         self.backend = backend
         self.M, self.K, self.N = M, K, N
         self.dtype = np.dtype(dtype)

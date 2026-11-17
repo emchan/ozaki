@@ -98,6 +98,6 @@ for case_name, (m,k,n) in CASES.items():
                 results.append({'case':case_name,'shape':[m,k,n],'scheme':scheme_name,'backend':backend,'s':s,'status':'error','error':repr(e)})
                 print(f"  {scheme_name} {backend}: ERROR {e}", flush=True)
 
-with open('results_mac.json','w') as f:
+with open('arch/apple/results/results_mac.json','w') as f:
     json.dump(results, f, indent=2)
-print("\nSaved results_mac.json")
+print("\nSaved arch/apple/results/results_mac.json")

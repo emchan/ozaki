@@ -41,7 +41,8 @@ class QNNSession:
         graph = helper.make_graph([node], 'g', [A, B], [C])
         model = helper.make_model(graph, producer_name='ozaki', opset_imports=[helper.make_opsetid('', 13)])
         model.ir_version = 9
-        fname = f"_mm_{M}_{K}_{N}_{np.dtype(npdt).name}_{backend}.onnx"
+        os.makedirs("/tmp/ozaki", exist_ok=True)
+        fname = os.path.join("/tmp/ozaki", f"_mm_{M}_{K}_{N}_{np.dtype(npdt).name}_{backend}.onnx")
         onnx.save(model, fname)
         path = getattr(qnn, f'get_qnn_{backend}_path')()
         self.sess = ort.InferenceSession(fname, providers=[('QNNExecutionProvider', {'backend_path': path})])

@@ -17,14 +17,15 @@ node=helper.make_node('MatMul',['A','B'],['C'])
 g=helper.make_graph([node],'g',[A],[C],[init])
 m=helper.make_model(g,opset_imports=[helper.make_opsetid('',13)])
 m.ir_version=9
-onnx.save(m,'tmp_fp32.onnx')
+os.makedirs('/tmp/ozaki',exist_ok=True)
+onnx.save(m,'/tmp/ozaki/tmp_fp32.onnx')
 
-quantize_dynamic('tmp_fp32.onnx','tmp_int8.onnx',weight_type=QuantType.QInt8)
+quantize_dynamic('/tmp/ozaki/tmp_fp32.onnx','/tmp/ozaki/tmp_int8.onnx',weight_type=QuantType.QInt8)
 print("quantized")
 
 # run on NPU
 so=ort.SessionOptions(); so.log_severity_level=3
-sess=ort.InferenceSession('tmp_int8.onnx',so,providers=['VitisAIExecutionProvider'],provider_options=[{}])
+sess=ort.InferenceSession('/tmp/ozaki/tmp_int8.onnx',so,providers=['VitisAIExecutionProvider'],provider_options=[{}])
 X=np.random.randn(M,K).astype(np.float32)
 out=sess.run(None,{'A':X})[0]
 print('NPU quantized run OK', out.shape)

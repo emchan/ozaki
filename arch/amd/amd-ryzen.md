@@ -22,8 +22,8 @@ ozaki/
   bench_ozaki_fp32_amd.py
   run_tests_amd.py
   run_tests_npu_amd.py
-  results_amd.json
-  results_npu_amd.json
+  results/results_amd.json
+  results/results_npu_amd.json
 ```
 
 ## 1. Device capability examination ΓÇö CPU / GPU / NPU
@@ -51,7 +51,7 @@ ozaki/
 
 ## 2. Ozaki scheme harness (8 shapes)
 
-See `results_amd.json` (CPU/GPU) and `results_npu_amd.json` (NPU).
+See `results/results_amd.json` (CPU/GPU) and `results/results_npu_amd.json` (NPU).
 
 | scheme | backend | ozaki time (ms, range) | max abs vs fp64 |
 |---|---|---|---|
@@ -115,7 +115,7 @@ Machine: AMD Ryzen 7 7840HS (8c/16t), Radeon 780M iGPU, XDNA Phoenix NPU; Window
 - `fp64_emu` (s=6, low=fp32): ~fp64 accuracy (max abs ~3e-14) on CPU/GPU/NPU.
 - `fp32_emu` (s=8, low=fp16): ~fp16-level accuracy (~2e-2) on all three backends.
 
-Timings: see `results_amd.json` (CPU/GPU) and `results_npu_amd.json` (NPU).
+Timings: see `results/results_amd.json` (CPU/GPU) and `results/results_npu_amd.json` (NPU).
 
 ## 3. fp64 via fp32 partials, smaller s (DiT shape)
 

@@ -17,7 +17,7 @@ import onnxruntime as ort
 from onnx import helper, TensorProto
 
 
-def create_backend(backend: str, M: int, K: int, N: int, dtype=None, model_dir: str = "/tmp"):
+def create_backend(backend: str, M: int, K: int, N: int, dtype=None, model_dir: str = "/tmp/ozaki"):
     """Return an object with .run(A, B) -> C for `A @ B` with A:(M,K) B:(K,N)."""
     if backend == "cpu":
         dt = {np.float32: TensorProto.FLOAT, np.float16: TensorProto.FLOAT16}[dtype]

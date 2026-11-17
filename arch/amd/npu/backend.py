@@ -38,7 +38,7 @@ class Backend:
             raise ValueError("npu backend expected")
         if model_dir is None:
             import tempfile
-            model_dir = tempfile.gettempdir()
+            model_dir = "/tmp/ozaki"
         os.makedirs(model_dir, exist_ok=True)
         self.backend = backend
         self.M, self.K, self.N = M, K, N
