@@ -6,6 +6,7 @@ import platform
 import subprocess
 import json
 import shutil
+import time
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ARCH = platform.machine().lower().replace(" ", "-")
@@ -236,6 +237,40 @@ def print_summary():
             print(row)
     print("=" * len(header))
 
+    print_cpu_native_capability()
+
+
+def print_cpu_native_capability():
+    """Benchmark native CPU fp16/fp32/fp64 GEMM capability as a reference."""
+    try:
+        import numpy as np
+    except Exception as e:
+        print(f"\nCPU native capability: numpy unavailable ({e})")
+        return
+    m, k, n = 256, 256, 256
+    rng = np.random.default_rng(0)
+    print("\n" + "=" * 60)
+    print("CPU native GEMM capability (reference)")
+    print("=" * 60)
+    print(f"{'precision':<12}{'time (ms)':<14}{'TFLOPS':<10}")
+    print("-" * 60)
+    for name, dtype in (("fp16", np.float16), ("fp32", np.float32), ("fp64", np.float64)):
+        try:
+            A = (rng.standard_normal((m, k)) * 0.5).astype(dtype)
+            B = (rng.standard_normal((k, n)) * 0.5).astype(dtype)
+            # Warmup.
+            _ = A @ B
+            times = []
+            for _ in range(5):
+                t0 = time.perf_counter()
+                _ = A @ B
+                times.append(time.perf_counter() - t0)
+            t = sorted(times)[len(times) // 2]
+            tflops = (2.0 * m * k * n / t) / 1e12
+            print(f"{name:<12}{t * 1000:<14.2f}{tflops:<10.3f}")
+        except Exception as e:
+            print(f"{name:<12}{'error':<14}{str(e)}")
+    print("=" * 60)
 
 
 def main():
