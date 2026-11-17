@@ -164,7 +164,7 @@ def collect_results():
             devices.append(row_device)
             overall_rows.append(dict(r, device=row_device, source=rel))
 
-    _DEVICES = sorted(set(devices))
+    _DEVICES = sorted(set(d for d in devices if d != "host"))
     _OVERALL_ROWS = overall_rows
 
     # Save the overall (combined) results to results/.
