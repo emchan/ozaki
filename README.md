@@ -158,12 +158,12 @@ python bench\bench_ozaki_parts.py
   - `large_thin`: (1024, 64, 16)
   - `large_fat`: (16, 64, 1024)
   - `large_matvec`: (1024, 64, 1)
-- **DiT-realistic GEMM** (`bench_ozaki_*` / `bench_gemm_*`): K=3072, N=12288, T=1024, M=1 → C[1,1024,12288] = x[1,1024,3072] @ W[3072,12288] (0.1545 TFLOP/chain).
+- **Large GEMM** (`bench_ozaki_*` / `bench_gemm_*`): K=3072, N=12288, T=1024, M=1 → C[1,1024,12288] = x[1,1024,3072] @ W[3072,12288] (0.1545 TFLOP/chain).
 - **Small-shape tests** (`bench_int8.py` / `bench_gemm_small.py`): (64, 64, 64) and (256, 256, 256).
 
 ## Summary of results
 
-### Device GEMM capability (measured on a Snapdragon X Elite, DiT shape
+### Device GEMM capability (measured on a Snapdragon X Elite, target shape
 `x[1,1024,3072]@[3072,12288]`, 0.1545 TFLOP/chain)
 
 | backend | fp16 GEMM | fp32 GEMM | fp64 |
@@ -178,16 +178,16 @@ python bench\bench_ozaki_parts.py
   an int8 GEMM via ONNX `MatMul` through the QNN EP was attempted on both NPU (`htp`) and GPU (`gpu`) —
   both rejected with `INVALID_GRAPH ... Type 'tensor(int8)' ... is invalid`; the NPU's int8 throughput would
   require a different (quantized-kernel) execution path. By contrast, **w8a16** (int8 weights × fp16 activations,
-  via the QNN EP flag `enable_htp_fp16_precision=1`) was measured at **4.96 TFLOPS** (fp16 GEMM, DiT shape); fresh
-  single-GEMM run: htp **13.15 GFLOPS** / gpu **11.69 GFLOPS** (DiT-realistic).
+  via the QNN EP flag `enable_htp_fp16_precision=1`) was measured at **4.96 TFLOPS** (fp16 GEMM, target shape); fresh
+  single-GEMM run: htp **13.15 GFLOPS** / gpu **11.69 GFLOPS** (large shape).
 - **w8a16 as an emulation path**: w8a16 (int8 weights × fp16 activations) uses fp16-level arithmetic, so
   as an fp32-emulation working precision it does not exceed the fp16 path used in `fp32_emu` (s=8, u_acc=2^-11,
   measured ~2^-11 → not true fp32); as an fp64-emulation working precision it maps to the failed fp16-partial
   route (A2), whereas the validated fp64 route uses low=fp32 partials (s=6, ~fp64 accuracy).
 
-### Ozaki schemes vs native / partial-GEMM paths (DiT shape)
+### Ozaki schemes vs native / partial-GEMM paths (target shape)
 
-| # | scheme | high → low | s | u_acc | accuracy | time @ DiT shape | verdict |
+| # | scheme | high → low | s | u_acc | accuracy | time @ target shape | verdict |
 |---|---|---|---|---|---|---|---|
 | – | native fp32 GEMM (ozaki s=1) | fp32 → fp32 | 1 | – | fp32 ✓ | **41 ms** | ✅ best available fp32 path |
 | – | native fp16 GEMM (ozaki s=1) | fp16 → fp16 | 1 | – | fp16 (~1e-3 rel) | **31 ms** | ✅ native fp16 path |
@@ -220,14 +220,14 @@ python bench\bench_ozaki_parts.py
 
 ## Work description / cross-hardware evaluation
 
-- **Goal**: run diffusion/DiT-scale matmuls at fp64 (or fp32) precision on integrated hardware
+- **Goal**: run large-scale matmuls at fp64 (or fp32) precision on integrated hardware
   (GPU/NPU/CPU) that lack fp64, using the ozaki splitting method.
 - **Method**: Veltkamp-style error-free splitting (`split_matrix`) into `s` low-precision partials,
   backend GEMMs (`cpu` / `gpu` / `npu`), recombine in high precision (`fp64` / `fp32`).
 - **Experiments**: capability benchmarks (fp16/fp32 GEMMs), scheme harness (`run_tests.py`), fp64-via-fp16
   (NaN → normalized prototype), fp64-via-fp32 with smaller `s`, fp32 emulation via fp16 partials.
 - **Findings**: NPU is the only sensible ozaki backend (~3.7–5 TFLOPS); fp64 emulation via fp32 partials is
-  the only validated accurate path (~20–30 s/matmul @ DiT vs 41 ms native fp32); fp32 emulation via ozaki-fp16
+  the only validated accurate path (~20–30 s/matmul @ target shape vs 41 ms native fp32); fp32 emulation via ozaki-fp16
   is runnable but ~1000x slower and only ~fp16-accurate; native fp32 GEMMs (NPU: 3.73 TFLOPS / 41 ms) beat
   ozaki-fp16-splitting for fp32.
 
