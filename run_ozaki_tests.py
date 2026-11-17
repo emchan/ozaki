@@ -134,6 +134,15 @@ def _device_for_result_file(rel):
     return os.path.splitext(os.path.basename(rel))[0]
 
 
+def _product_for_device(device):
+    return {
+        "apple": "Apple M4",
+        "snapdragon": "Snapdragon X1P64100",
+        "amd": "AMD Ryzen 7 7840HS",
+        "host": "host",
+    }.get(device, device)
+
+
 def collect_results():
     global _DEVICES, _OVERALL_ROWS
     data = {}
@@ -161,9 +170,10 @@ def collect_results():
             if t is None or err is None:
                 continue
             row_device = r.get("device", device)
+            row_product = r.get("product", _product_for_device(row_device))
             data.setdefault((row_device, scheme, backend), []).append((float(t), float(err)))
             devices.append(row_device)
-            overall_rows.append(dict(r, device=row_device, source=rel))
+            overall_rows.append(dict(r, device=row_device, product=row_product, source=rel))
 
     _DEVICES = sorted(set(d for d in devices if d != "host"))
     _OVERALL_ROWS = overall_rows
@@ -199,10 +209,14 @@ def print_summary():
     # Column widths
     colw = 22
     device_w = 14
+    product_w = 22
     native_w = 12
     target_w = 10
     speedup_w = 24
-    header = "device".ljust(device_w) + "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) + "".join(b.center(colw) for b in backends) + "best speedup vs CPU".center(speedup_w)
+    header = ("device".ljust(device_w) + "product".ljust(product_w) +
+              "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) +
+              "".join(b.center(colw) for b in backends) +
+              "best speedup vs CPU".center(speedup_w))
     print("\n" + "=" * len(header))
     print("Speed (ms avg) / Error (max abs avg)")
     print("=" * len(header))
@@ -211,7 +225,9 @@ def print_summary():
     for device in devices:
         for scheme in schemes:
             target, native = PRECISION_MAP.get(scheme, (scheme, "?"))
-            row = device.ljust(device_w) + native.ljust(native_w) + target.ljust(target_w + 6)
+            product = _product_for_device(device)
+            row = (device.ljust(device_w) + product.ljust(product_w) +
+                   native.ljust(native_w) + target.ljust(target_w + 6))
             for backend in backends:
                 v = agg.get((device, scheme, backend))
                 if v is None:
