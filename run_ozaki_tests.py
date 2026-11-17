@@ -7,6 +7,7 @@ import subprocess
 import json
 import shutil
 import time
+import warnings
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ARCH = platform.machine().lower().replace(" ", "-")
@@ -294,31 +295,42 @@ def print_cpu_native_capability():
     except Exception as e:
         print(f"\nCPU native capability: numpy unavailable ({e})")
         return
-    m, k, n = 256, 256, 256
+    shapes = [
+        ("256x256x256", (256, 256, 256)),
+        ("1024x1024x1024", (1024, 1024, 1024)),
+        ("1x1024x4096", (1, 1024, 4096)),
+        ("1x4096x4096", (1, 4096, 4096)),
+    ]
     rng = np.random.default_rng(0)
     cpu_name = _host_cpu_product()
-    print("\n" + "=" * 72)
+    print("\n" + "=" * 84)
     print("CPU native GEMM capability (reference)")
-    print("=" * 72)
-    print(f"{'precision':<12}{'time (ms)':<14}{'TFLOPS':<10}{'cpu / product':<30}")
-    print("-" * 72)
-    for name, dtype in (("fp16", np.float16), ("fp32", np.float32), ("fp64", np.float64)):
-        try:
-            A = (rng.standard_normal((m, k)) * 0.5).astype(dtype)
-            B = (rng.standard_normal((k, n)) * 0.5).astype(dtype)
-            # Warmup.
-            _ = A @ B
-            times = []
-            for _ in range(5):
-                t0 = time.perf_counter()
-                _ = A @ B
-                times.append(time.perf_counter() - t0)
-            t = sorted(times)[len(times) // 2]
-            tflops = (2.0 * m * k * n / t) / 1e12
-            print(f"{name:<12}{t * 1000:<14.2f}{tflops:<10.3f}{cpu_name:<30}")
-        except Exception as e:
-            print(f"{name:<12}{'error':<14}{str(e):<10}{cpu_name:<30}")
-    print("=" * 72)
+    print("=" * 84)
+    print(f"{'shape':<20}{'precision':<12}{'time (ms)':<14}{'TFLOPS':<10}{'cpu / product':<30}")
+    print("-" * 84)
+    for label, (m, k, n) in shapes:
+        for name, dtype in (("fp16", np.float16), ("fp32", np.float32), ("fp64", np.float64)):
+            try:
+                scale = 0.01 if dtype == np.float16 else 0.5
+                A = (rng.standard_normal((m, k)) * scale).astype(dtype)
+                B = (rng.standard_normal((k, n)) * scale).astype(dtype)
+                # Warmup.
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    _ = A @ B
+                times = []
+                for _ in range(3):
+                    t0 = time.perf_counter()
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        _ = A @ B
+                    times.append(time.perf_counter() - t0)
+                t = sorted(times)[len(times) // 2]
+                tflops = (2.0 * m * k * n / t) / 1e12
+                print(f"{label:<20}{name:<12}{t * 1000:<14.2f}{tflops:<10.3f}{cpu_name:<30}")
+            except Exception as e:
+                print(f"{label:<20}{name:<12}{'error':<14}{str(e)[:8]:<10}{cpu_name:<30}")
+    print("=" * 84)
 
 
 def main():

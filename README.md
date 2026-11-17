@@ -253,34 +253,45 @@ device        vendor      native      target (emu)             cpu              
 amd           AMD         fp16        fp32              6.3 ms / 2.71e-03     4.2 ms / 2.71e-03     4.8 ms / 2.71e-03         1.51x (gpu)       AMD Ryzen 7 7840HS    
 amd           AMD         fp32        fp64              3.0 ms / 5.61e-15     3.1 ms / 5.61e-15     3.2 ms / 5.61e-15         0.98x (gpu)       AMD Ryzen 7 7840HS    
 amd           AMD         w8a16       fp16                     n/a                   n/a                   n/a                    n/a           AMD Ryzen 7 7840HS    
-apple         Apple       fp16        fp32              31.2 ms / 2.71e-03    35.7 ms / 2.71e-03    12.4 ms / 2.71e-03        2.52x (npu)       Apple M4              
-apple         Apple       fp32        fp64              1.0 ms / 6.38e-15     21.1 ms / 6.38e-15    2.0 ms / 1.40e-02         0.51x (npu)       Apple M4              
-apple         Apple       w8a16       fp16                     n/a                   n/a            0.2 ms / 2.34e-01             n/a           Apple M4              
-snapdragon    Qualcomm    fp16        fp32                     n/a            4.2 ms / 2.71e-03     4.4 ms / 2.71e-03             n/a           Snapdragon X1P64100   
-snapdragon    Qualcomm    fp32        fp64                     n/a            2.4 ms / 5.61e-15     2.0 ms / 5.61e-15             n/a           Snapdragon X1P64100   
-snapdragon    Qualcomm    w8a16       fp16                     n/a                   n/a            0.1 ms / 1.51e-02             n/a           Snapdragon X1P64100   
+apple         Apple       fp16        fp32              30.7 ms / 2.71e-03    35.4 ms / 2.71e-03    12.3 ms / 2.71e-03        2.50x (npu)       Apple M4              
+apple         Apple       fp32        fp64              1.0 ms / 6.38e-15     20.8 ms / 6.38e-15    2.0 ms / 1.40e-02         0.51x (npu)       Apple M4              
+apple         Apple       w8a16       fp16                     n/a                   n/a            0.2 ms / 2.05e-01             n/a           Apple M4              
+snapdragon    Qualcomm    fp16        fp32                     n/a            4.3 ms / 2.71e-03     5.4 ms / 2.71e-03             n/a           Snapdragon X1P64100   
+snapdragon    Qualcomm    fp32        fp64                     n/a            2.5 ms / 5.61e-15     3.5 ms / 5.61e-15             n/a           Snapdragon X1P64100   
+snapdragon    Qualcomm    w8a16       fp16                     n/a                   n/a                   n/a                    n/a           Snapdragon X1P64100   
 ======================================================================================================================================================================
-
-========================================================================
-CPU native GEMM capability (reference)
-========================================================================
-precision   time (ms)     TFLOPS    cpu / product                 
-------------------------------------------------------------------------
-fp16        53.66         0.001     aarch64                       
-fp32        4.13          0.008     aarch64                       
-fp64        1.47          0.023     aarch64                       
-========================================================================
 ```
 
 ## CPU native GEMM capability (reference)
 
 ```
 CPU native GEMM capability (reference)
-========================================================================
-precision   time (ms)     TFLOPS    cpu / product                 
-------------------------------------------------------------------------
-fp16        53.90         0.001     Snapdragon X1P64100 (host)    
-fp32        1.98          0.017     Snapdragon X1P64100 (host)    
-fp64        4.23          0.008     Snapdragon X1P64100 (host)    
-========================================================================
+====================================================================================
+shape               precision   time (ms)     TFLOPS    cpu / product                 
+------------------------------------------------------------------------------------
+256x256x256         fp16        49.58         0.001     Snapdragon X1P64100 (host)    
+256x256x256         fp32        3.73          0.009     Snapdragon X1P64100 (host)    
+256x256x256         fp64        6.78          0.005     Snapdragon X1P64100 (host)    
+256x256x256         fp16        n/a           n/a       Apple M4                      
+256x256x256         fp32        0.03          1.263     Apple M4                      
+256x256x256         fp64        0.10          0.325     Apple M4                      
+1024x1024x1024      fp16        3169.73       0.001     Snapdragon X1P64100 (host)    
+1024x1024x1024      fp32        12.67         0.169     Snapdragon X1P64100 (host)    
+1024x1024x1024      fp64        31.58         0.068     Snapdragon X1P64100 (host)    
+1x1024x4096         fp16        22.70         0.000     Snapdragon X1P64100 (host)    
+1x1024x4096         fp32        7.48          0.001     Snapdragon X1P64100 (host)    
+1x1024x4096         fp64        7.89          0.001     Snapdragon X1P64100 (host)    
+1x4096x4096         fp16        198.24        0.000     Snapdragon X1P64100 (host)    
+1x4096x4096         fp32        7.91          0.004     Snapdragon X1P64100 (host)    
+1x4096x4096         fp64        12.64         0.003     Snapdragon X1P64100 (host)    
+====================================================================================
 ```
+
+Note: the large gap between Snapdragon (3.73 ms / 0.009 TFLOPS fp32 @256³) and
+Apple M4 (0.03 ms / 1.263 TFLOPS fp32 @256³) partly reflects the BLAS in use —
+the M4 run uses Accelerate, while this host uses scipy-openblas built for
+Neoverse V2 (`NO_AFFINITY`) inside WSL, which is not tuned for Snapdragon
+Oryon cores. Small shapes are also launch/overhead-dominated, so these are
+reference timings rather than peak throughput. Apple M4 numbers above are only
+available for 256³ (from results_mac.json ref times); larger-shape M4 data is
+not yet measured.

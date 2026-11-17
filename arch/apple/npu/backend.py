@@ -2,10 +2,13 @@
 import time
 import numpy as np
 
+import contextlib, os as _os
 try:
-    import coremltools as ct
-    from coremltools.converters.mil import Builder as mb
-    from coremltools.converters.mil.mil import types as mt
+    with open(_os.devnull, "w") as _devnull:
+        with contextlib.redirect_stdout(_devnull), contextlib.redirect_stderr(_devnull):
+            import coremltools as ct
+            from coremltools.converters.mil import Builder as mb
+            from coremltools.converters.mil.mil import types as mt
     _COREML_AVAILABLE = True
 except Exception:  # pragma: no cover - platform dependent
     ct = None
@@ -44,11 +47,13 @@ class Backend:
         def prog(a, b):
             return mb.matmul(x=a, y=b, transpose_x=False, transpose_y=False)
 
-        self.model = ct.convert(
-            prog,
-            compute_units=ct.ComputeUnit.CPU_AND_NE,
-            minimum_deployment_target=ct.target.macOS13,
-        )
+        with open(_os.devnull, "w") as _devnull:
+            with contextlib.redirect_stdout(_devnull), contextlib.redirect_stderr(_devnull):
+                self.model = ct.convert(
+                    prog,
+                    compute_units=ct.ComputeUnit.CPU_AND_NE,
+                    minimum_deployment_target=ct.target.iOS16,
+                )
 
     def run(self, A_, B_):
         Aa = np.asarray(A_, dtype=self.dtype)
