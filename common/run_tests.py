@@ -121,6 +121,7 @@ for case_name, (m,k,n) in CASES.items():
                 results.append({'case':case_name,'shape':[m,k,n],'scheme':scheme_name,'backend':backend,'s':s,'status':'error','error':repr(e)})
                 print(f"  {scheme_name} {backend}: ERROR {e}", flush=True)
 
+os.makedirs('results', exist_ok=True)
 with open('results/results.json','w') as f:
     json.dump(results, f, indent=2)
 print("\nSaved results/results.json")

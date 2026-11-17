@@ -38,7 +38,10 @@ def platform_tests(system=None, machine=None):
         # Snapdragon / other ARM Windows parts use the QNN (htp/gpu) harness;
         # AMD (Ryzen AI) parts use the Ryzen AI harnesses.
         if _is_arm_machine(machine):
-            return ["common/run_tests.py"]
+            return [
+                "common/run_tests.py",
+                "arch/snapdragon/w8a16_test.py",
+            ]
         return [
             "arch/amd/run_tests_amd.py",
             "arch/amd/run_tests_npu_amd.py",
@@ -103,12 +106,14 @@ RESULT_FILES = [
     "arch/amd/results/results_npu_amd.json",
     "arch/apple/results/results_mac.json",
     "arch/apple/results/results_dit_mac.json",
+    "arch/snapdragon/results/w8a16_results.json",
 ]
 
 
 PRECISION_MAP = {
     "fp64_emu": ("fp64", "fp32"),
     "fp32_emu": ("fp32", "fp16"),
+    "w8a16": ("fp16", "w8a16"),
 }
 
 def collect_results():

@@ -48,6 +48,7 @@ for backend in ['gpu','npu']:
     except Exception as e:
         print(f"fp32_emu {backend}: ERROR {e}", flush=True)
 
+os.makedirs('arch/apple/results', exist_ok=True)
 with open('arch/apple/results/results_dit_mac.json','w') as f:
     json.dump(results,f,indent=2)
 print("Saved arch/apple/results/results_dit_mac.json")
