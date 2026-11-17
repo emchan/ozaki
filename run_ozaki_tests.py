@@ -116,8 +116,28 @@ PRECISION_MAP = {
     "w8a16": ("fp16", "w8a16"),
 }
 
+_DEVICES = []
+_OVERALL_ROWS = []
+
+
+def _device_for_result_file(rel):
+    low = rel.lower()
+    if "apple" in low:
+        return "apple"
+    if "amd" in low:
+        return "amd"
+    if "snapdragon" in low:
+        return "snapdragon"
+    if rel == "results/results.json":
+        return "host"
+    return os.path.splitext(os.path.basename(rel))[0]
+
+
 def collect_results():
+    global _DEVICES, _OVERALL_ROWS
     data = {}
+    devices = []
+    overall_rows = []
     for rel in RESULT_FILES:
         path = os.path.join(ROOT, rel)
         if not os.path.exists(path):
@@ -126,6 +146,7 @@ def collect_results():
             rows = json.load(open(path))
         except Exception:
             continue
+        device = _device_for_result_file(rel)
         for r in rows:
             scheme = r.get("scheme")
             backend = r.get("backend")
@@ -138,10 +159,26 @@ def collect_results():
             err = m.get("max_abs", r.get("maxabs"))
             if t is None or err is None:
                 continue
-            data.setdefault((scheme, backend), []).append((float(t), float(err)))
+            row_device = r.get("device", device)
+            data.setdefault((row_device, scheme, backend), []).append((float(t), float(err)))
+            devices.append(row_device)
+            overall_rows.append(dict(r, device=row_device, source=rel))
 
-    schemes = sorted({k[0] for k in data})
-    backends = sorted({k[1] for k in data})
+    _DEVICES = sorted(set(devices))
+    _OVERALL_ROWS = overall_rows
+
+    # Save the overall (combined) results to results/.
+    out_dir = os.path.join(ROOT, "results")
+    os.makedirs(out_dir, exist_ok=True)
+    overall_path = os.path.join(out_dir, "overall_results.json")
+    with open(overall_path, "w") as f:
+        json.dump(overall_rows, f, indent=2)
+    # Convenience alias.
+    with open(os.path.join(out_dir, "overall.json"), "w") as f:
+        json.dump(overall_rows, f, indent=2)
+
+    schemes = sorted({k[1] for k in data})
+    backends = sorted({k[2] for k in data})
     return schemes, backends, data
 
 
@@ -150,34 +187,37 @@ def print_summary():
     if not schemes or not backends:
         print("\nNo result data available for summary.")
         return
+    devices = _DEVICES or ["unknown"]
     # Build aggregated values
     agg = {}
-    for (scheme, backend), vals in data.items():
+    for (device, scheme, backend), vals in data.items():
         ts = [v[0] for v in vals]
         es = [v[1] for v in vals]
-        agg[(scheme, backend)] = (sum(ts) / len(ts), sum(es) / len(es))
+        agg[(device, scheme, backend)] = (sum(ts) / len(ts), sum(es) / len(es))
 
     # Column widths
     colw = 22
+    device_w = 14
     native_w = 12
     target_w = 10
-    header = "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) + "".join(b.center(colw) for b in backends)
+    header = "device".ljust(device_w) + "native".ljust(native_w) + "target (emu)".ljust(target_w + 6) + "".join(b.center(colw) for b in backends)
     print("\n" + "=" * len(header))
     print("Speed (ms avg) / Error (max abs avg)")
     print("=" * len(header))
     print(header)
     print("-" * len(header))
-    for scheme in schemes:
-        target, native = PRECISION_MAP.get(scheme, (scheme, "?"))
-        row = native.ljust(native_w) + target.ljust(target_w + 6)
-        for backend in backends:
-            v = agg.get((scheme, backend))
-            if v is None:
-                cell = "n/a"
-            else:
-                cell = f"{v[0]:.1f} ms / {v[1]:.2e}"
-            row += cell.center(colw)
-        print(row)
+    for device in devices:
+        for scheme in schemes:
+            target, native = PRECISION_MAP.get(scheme, (scheme, "?"))
+            row = device.ljust(device_w) + native.ljust(native_w) + target.ljust(target_w + 6)
+            for backend in backends:
+                v = agg.get((device, scheme, backend))
+                if v is None:
+                    cell = "n/a"
+                else:
+                    cell = f"{v[0]:.1f} ms / {v[1]:.2e}"
+                row += cell.center(colw)
+            print(row)
     print("=" * len(header))
 
 
