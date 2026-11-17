@@ -30,7 +30,7 @@ def platform_tests(system=None, machine=None):
     if system == "Darwin":
         return [
             "arch/apple/run_eval_mac.py",
-            "arch/apple/run_dit_mac.py",
+            "arch/apple/w8a16_test.py",
         ]
     if system == "Linux":
         return []
@@ -105,7 +105,7 @@ RESULT_FILES = [
     "arch/amd/results/results_amd.json",
     "arch/amd/results/results_npu_amd.json",
     "arch/apple/results/results_mac.json",
-    "arch/apple/results/results_dit_mac.json",
+    "arch/apple/results/w8a16_results.json",
     "arch/snapdragon/results/w8a16_results.json",
 ]
 

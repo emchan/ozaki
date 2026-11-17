@@ -54,5 +54,4 @@ devices: **CPU**, **GPU** (Metal/MPS) and **NPU** (Apple Neural Engine, via Core
 ## Result files
 
 - `results/results_mac.json` — scheme harness (8 shapes × 2 schemes × 3 backends)
-- `results/results_dit_mac.json` — DiT-shape Ozaki runs
 - `arch/apple/{cpu,gpu,npu}/backend.py` — backend implementations used for this evaluation

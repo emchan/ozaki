@@ -1,3 +1,4 @@
+import numpy as np
 """Apple Silicon backend dispatcher."""
 def create_backend(backend, M, K, N, dtype=np.float32, model_dir="/tmp"):
     if backend == "cpu":
