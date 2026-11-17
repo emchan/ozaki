@@ -130,7 +130,7 @@ def _device_for_result_file(rel):
     if "snapdragon" in low:
         return "snapdragon"
     if rel == "results/results.json":
-        return "host"
+        return "snapdragon"
     return os.path.splitext(os.path.basename(rel))[0]
 
 
@@ -141,6 +141,21 @@ def _product_for_device(device):
         "amd": "AMD Ryzen 7 7840HS",
         "host": "host",
     }.get(device, device)
+
+
+def _host_cpu_product():
+    system = platform.system()
+    machine = platform.machine().lower()
+    if system == "Darwin":
+        return "Apple M4"
+    if machine in ("aarch64", "arm64"):
+        return "Snapdragon X1P64100 (host)"
+    proc = (platform.processor() or "").lower()
+    if "ryzen" in proc or "amd" in proc:
+        return "AMD Ryzen (host)"
+    if proc:
+        return platform.processor()
+    return platform.machine()
 
 
 def _vendor_for_device(device):
@@ -281,7 +296,7 @@ def print_cpu_native_capability():
         return
     m, k, n = 256, 256, 256
     rng = np.random.default_rng(0)
-    cpu_name = platform.processor() or platform.machine()
+    cpu_name = _host_cpu_product()
     print("\n" + "=" * 72)
     print("CPU native GEMM capability (reference)")
     print("=" * 72)

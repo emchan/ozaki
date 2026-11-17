@@ -256,9 +256,9 @@ amd           AMD         w8a16       fp16                     n/a              
 apple         Apple       fp16        fp32              31.2 ms / 2.71e-03    35.7 ms / 2.71e-03    12.4 ms / 2.71e-03        2.52x (npu)       Apple M4              
 apple         Apple       fp32        fp64              1.0 ms / 6.38e-15     21.1 ms / 6.38e-15    2.0 ms / 1.40e-02         0.51x (npu)       Apple M4              
 apple         Apple       w8a16       fp16                     n/a                   n/a            0.2 ms / 2.34e-01             n/a           Apple M4              
-snapdragon    Qualcomm    fp16        fp32                     n/a                   n/a                   n/a                    n/a           Snapdragon X1P64100   
-snapdragon    Qualcomm    fp32        fp64                     n/a                   n/a                   n/a                    n/a           Snapdragon X1P64100   
-snapdragon    Qualcomm    w8a16       fp16                     n/a                   n/a            0.1 ms / 1.83e-01             n/a           Snapdragon X1P64100   
+snapdragon    Qualcomm    fp16        fp32                     n/a            4.2 ms / 2.71e-03     4.4 ms / 2.71e-03             n/a           Snapdragon X1P64100   
+snapdragon    Qualcomm    fp32        fp64                     n/a            2.4 ms / 5.61e-15     2.0 ms / 5.61e-15             n/a           Snapdragon X1P64100   
+snapdragon    Qualcomm    w8a16       fp16                     n/a                   n/a            0.1 ms / 1.51e-02             n/a           Snapdragon X1P64100   
 ======================================================================================================================================================================
 
 ========================================================================
@@ -266,9 +266,9 @@ CPU native GEMM capability (reference)
 ========================================================================
 precision   time (ms)     TFLOPS    cpu / product                 
 ------------------------------------------------------------------------
-fp16        54.26         0.001     aarch64                       
-fp32        4.35          0.008     aarch64                       
-fp64        2.25          0.015     aarch64                       
+fp16        53.66         0.001     aarch64                       
+fp32        4.13          0.008     aarch64                       
+fp64        1.47          0.023     aarch64                       
 ========================================================================
 ```
 
@@ -279,8 +279,8 @@ CPU native GEMM capability (reference)
 ========================================================================
 precision   time (ms)     TFLOPS    cpu / product                 
 ------------------------------------------------------------------------
-fp16        50.83         0.001     aarch64                       
-fp32        5.39          0.006     aarch64                       
-fp64        7.76          0.004     aarch64                       
+fp16        53.90         0.001     Snapdragon X1P64100 (host)    
+fp32        1.98          0.017     Snapdragon X1P64100 (host)    
+fp64        4.23          0.008     Snapdragon X1P64100 (host)    
 ========================================================================
 ```
