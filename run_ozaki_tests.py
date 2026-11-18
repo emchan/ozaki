@@ -12,6 +12,8 @@ import warnings
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ARCH = platform.machine().lower().replace(" ", "-")
 VENV = os.path.join(ROOT, f"venv-{ARCH}")
+README = os.path.join(ROOT, "README.md")
+CPU_REF_SECTION = "## CPU native GEMM capability (reference)"
 
 if sys.platform == "win32":
     VENV_PY = os.path.join(VENV, "Scripts", "python.exe")
@@ -153,6 +155,9 @@ def _host_cpu_product():
         return "Snapdragon X1P64100 (host)"
     proc = (platform.processor() or "").lower()
     if "ryzen" in proc or "amd" in proc:
+        # Family 25 / Model 116 is AMD "Phoenix" (e.g. Ryzen 7 7840HS).
+        if "family 25" in proc and "model 116" in proc:
+            return "AMD Ryzen 7 7840HS"
         return "AMD Ryzen (host)"
     if proc:
         return platform.processor()
@@ -288,13 +293,23 @@ def print_summary():
     print_cpu_native_capability()
 
 
-def print_cpu_native_capability():
-    """Benchmark native CPU fp16/fp32/fp64 GEMM capability as a reference."""
+def _is_cpu_reference_row(line):
+    """True if `line` is a data row of the CPU reference table."""
+    return len(line) >= 32 and line[20:32].strip() in ("fp16", "fp32", "fp64")
+
+
+def _cpu_row_product(line):
+    """Return the product column of a CPU reference table data row."""
+    return line[56:].strip()
+
+
+def build_cpu_reference_table():
+    """Benchmark native CPU fp16/fp32/fp64 GEMM and return the table lines."""
     try:
         import numpy as np
     except Exception as e:
         print(f"\nCPU native capability: numpy unavailable ({e})")
-        return
+        return []
     shapes = [
         ("256x256x256", (256, 256, 256)),
         ("1024x1024x1024", (1024, 1024, 1024)),
@@ -303,11 +318,12 @@ def print_cpu_native_capability():
     ]
     rng = np.random.default_rng(0)
     cpu_name = _host_cpu_product()
-    print("\n" + "=" * 84)
-    print("CPU native GEMM capability (reference)")
-    print("=" * 84)
-    print(f"{'shape':<20}{'precision':<12}{'time (ms)':<14}{'TFLOPS':<10}{'cpu / product':<30}")
-    print("-" * 84)
+    lines = [
+        "CPU native GEMM capability (reference)",
+        "=" * 86,
+        f"{'shape':<20}{'precision':<12}{'time (ms)':<14}{'TFLOPS':<10}{'cpu / product':<30}",
+        "-" * 86,
+    ]
     for label, (m, k, n) in shapes:
         for name, dtype in (("fp16", np.float16), ("fp32", np.float32), ("fp64", np.float64)):
             try:
@@ -327,10 +343,66 @@ def print_cpu_native_capability():
                     times.append(time.perf_counter() - t0)
                 t = sorted(times)[len(times) // 2]
                 tflops = (2.0 * m * k * n / t) / 1e12
-                print(f"{label:<20}{name:<12}{t * 1000:<14.2f}{tflops:<10.3f}{cpu_name:<30}")
+                lines.append(f"{label:<20}{name:<12}{t * 1000:<14.2f}{tflops:<10.3f}{cpu_name:<30}")
             except Exception as e:
-                print(f"{label:<20}{name:<12}{'error':<14}{str(e)[:8]:<10}{cpu_name:<30}")
-    print("=" * 84)
+                lines.append(f"{label:<20}{name:<12}{'error':<14}{str(e)[:8]:<10}{cpu_name:<30}")
+    lines.append("=" * 86)
+    return lines
+
+
+def update_readme_cpu_reference(lines):
+    """Write the generated CPU reference table into README.md.
+
+    Rows for the current host's product replace any previous rows for that
+    product; rows for other hosts (e.g. Apple M4) are preserved.
+    """
+    if not lines or not os.path.exists(README):
+        return False
+    with open(README, "r", encoding="utf-8", newline="") as f:
+        text = f.read()
+    nl = "\r\n" if "\r\n" in text else "\n"
+    section = text.find(CPU_REF_SECTION)
+    if section < 0:
+        print("[skip] CPU reference section not found in README.md.")
+        return False
+    fence_start = text.find("```", section)
+    if fence_start < 0:
+        print("[skip] CPU reference code block not found in README.md.")
+        return False
+    body_start = fence_start + 3
+    while body_start < len(text) and text[body_start] in "\r\n":
+        body_start += 1
+    fence_end = text.find("```", body_start)
+    if fence_end < 0:
+        print("[skip] CPU reference code block not closed in README.md.")
+        return False
+
+    new_rows = [ln for ln in lines if _is_cpu_reference_row(ln)]
+    if not new_rows:
+        return False
+    host_products = {_cpu_row_product(r) for r in new_rows}
+    other_rows = [ln for ln in text[body_start:fence_end].splitlines()
+                  if _is_cpu_reference_row(ln) and _cpu_row_product(ln) not in host_products]
+    generated_non_rows = [ln for ln in lines if not _is_cpu_reference_row(ln)]
+    merged = generated_non_rows[:-1] + other_rows + new_rows + generated_non_rows[-1:]
+    new_text = text[:body_start] + nl.join(merged) + nl + text[fence_end:]
+    if new_text == text:
+        print(f"[OK]   CPU reference table already up to date in {os.path.basename(README)}")
+        return True
+    with open(README, "w", encoding="utf-8", newline="") as f:
+        f.write(new_text)
+    print(f"[OK]   updated CPU reference table in {os.path.basename(README)}")
+    return True
+
+
+def print_cpu_native_capability():
+    """Benchmark native CPU GEMM capability, print it and update README.md."""
+    lines = build_cpu_reference_table()
+    if not lines:
+        return
+    print()
+    print("\n".join(lines))
+    update_readme_cpu_reference(lines)
 
 
 def main():
