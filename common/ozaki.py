@@ -3,9 +3,13 @@ import numpy as np
 try:
     sys.path.insert(0, r"C:\path\to\qnn_env\Lib\site-packages")
     import onnxruntime as ort
+except Exception:
+    # TPU/JAX hosts do not need ONNX Runtime; QNNSession will report the
+    # missing dependency if it is actually used.
+    ort = None
+try:
     import onnxruntime_qnn as qnn
 except Exception:
-    import onnxruntime as ort
     qnn = None
 try:
     import onnx

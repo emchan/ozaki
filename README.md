@@ -91,39 +91,25 @@ The implementation lives in `common/` with architecture-specific backends regist
 | Intel / x86 matrix engines | Intel AMX (Sapphire Rapids, Granite Rapids), AVX-512 + AVX-512BW/FMA | often yes (fp32+) | **not yet evaluated** |
 | iGPU / integrated GPU | Adreno, Intel Iris Xe / Xe-MAX (XMX), Apple (M4), AMD Radeon iGPU, ARM Mali | usually no | Adreno partially explored; **Apple M4 evaluated** (see `arch/apple/`) |
 | dGPU | NVIDIA (Tensor cores / TF32), AMD (RDNA matrix engines / VCN fp16) | often no | not yet wired |
-| NPU | Qualcomm Hexagon, Arm Ethos, Google TPU | no | **primary ozaki backend so far** |
+| NPU | Qualcomm Hexagon, Arm Ethos | no | **primary ozaki backend so far** |
+| TPU | Google Cloud TPU (JAX) | no | evaluated via `arch/tpu/` (v5e) |
 
 ## Project layout
 
-```text
-ozaki/
-├── common/                     # common code: the ozaki method core
-│   └── ozaki.py                #   _onnx_dtype, split_matrix, ozaki_matmul, QNNSession, numpy_matmul
-├── arch/
-│   ├── snapdragon/
-│   │   ├── cpu/backend.py      # integrated CPU (ORT CPU EP)
-│   │   ├── gpu/backend.py      # integrated / discrete GPU
-│   │   ├── npu/backend.py      # NPU (QNN EP)
-│   │   └── snapdragon.md       # device-specific fp32/fp64 emulation evaluation
-│   └── apple/
-│       └── silicon/
-│           ├── backend.py       # CPU (PyTorch) / GPU (MPS) / NPU (CoreML)
-│           └── apple-silicon.md # device-specific fp32/fp64 emulation evaluation
-├── bench/                       # experiment / benchmark scripts
-│   ├── bench_gemm_dtypes.py
-│   ├── bench_gemm_fp16.py
-│   ├── bench_gemm_small.py
-│   ├── bench_int8.py
-│   ├── bench_ozaki_fp16_norm.py
-│   ├── bench_ozaki_fp32.py
-│   ├── bench_ozaki_fp64_fp16.py
-│   ├── bench_ozaki_fp64_s.py
-│   └── bench_ozaki_parts.py
-├── common/run_tests.py          # ozaki scheme harness (fp64_emu / fp32_emu)
-├── summarize.py
-├── results.json
-└── README.md                    # this file
-```
+| device | vendor | native | target (emu) | cpu | gpu | npu | tpu | best speedup vs CPU | product |
+|---|---|---|---|---|---|---|---|---|---|
+| amd | AMD | fp16 | fp32 | 0.0053 | 0.0080 | 0.0070 | n/a | 1.51x (gpu) | AMD Ryzen 7 7840HS |
+| amd | AMD | fp32 | fp64 | 0.0112 | 0.0109 | 0.0104 | n/a | 0.98x (gpu) | AMD Ryzen 7 7840HS |
+| amd | AMD | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | AMD Ryzen 7 7840HS |
+| apple | Apple | fp16 | fp32 | 0.0011 | 0.0009 | 0.0027 | n/a | 2.51x (npu) | Apple M4 |
+| apple | Apple | fp32 | fp64 | 0.0322 | 0.0015 | 0.0165 | n/a | 0.51x (npu) | Apple M4 |
+| apple | Apple | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | Apple M4 |
+| snapdragon | Qualcomm | fp16 | fp32 | n/a | 0.0077 | 0.0062 | n/a | n/a | Snapdragon X1P64100 |
+| snapdragon | Qualcomm | fp32 | fp64 | n/a | 0.0137 | 0.0096 | n/a | n/a | Snapdragon X1P64100 |
+| snapdragon | Qualcomm | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | Snapdragon X1P64100 |
+| tpu | Google | fp16 | fp32 | 0.0000 | n/a | n/a | 0.0005 | 10.97x (tpu) | Google Cloud TPU v5e |
+| tpu | Google | fp32 | fp64 | 0.0089 | n/a | n/a | 0.0006 | 0.06x (tpu) | Google Cloud TPU v5e |
+
 
 ## Quickstart
 
@@ -145,6 +131,14 @@ python bench\bench_ozaki_fp16_norm.py
 python bench\bench_ozaki_fp64_s.py
 python bench\bench_ozaki_fp32.py
 python bench\bench_ozaki_parts.py
+```
+
+On a Linux Cloud TPU VM with JAX installed, `run_ozaki_tests.py` detects the
+TPU automatically and runs the scheme harness (backends `cpu` and `tpu`):
+
+```bash
+python run_ozaki_tests.py            # auto-detects the TPU
+python arch/tpu/run_tests_tpu.py     # or run just the TPU harness
 ```
 
 ## Tested matrix shapes
@@ -239,28 +233,47 @@ python bench\bench_ozaki_parts.py
 4. Native fp32-first adoption for fp32 workloads; ozaki only for fp64.
 5. Extend evaluation to additional hardware classes: Intel AMX / AVX-512 matrix engines,
    other iGPUs (Intel Xe-MAX XMX, Mali), discrete AMD/NVIDIA GPUs (fp16/bf16 fp64
-   emulation), and other NPUs (Arm Ethos, Google TPU, Intel NPU / Meteor Lake).
-   (Apple Silicon M4 now evaluated — see `arch/apple/`.)
+   emulation), and other NPUs (Arm Ethos, Intel NPU / Meteor Lake).
+   (Apple Silicon M4 and Google Cloud TPU v5e are now evaluated — see
+   `arch/apple/` and `arch/tpu/`.)
 
 
 ## Aggregated results (from `run_ozaki_tests.py`)
 
-```
-Speed (ms avg) / Error (max abs avg)
-======================================================================================================================================================================
-device        vendor      native      target (emu)             cpu                   gpu                   npu            best speedup vs CPU   product               
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-amd           AMD         fp16        fp32              6.3 ms / 2.71e-03     4.2 ms / 2.71e-03     4.8 ms / 2.71e-03         1.51x (gpu)       AMD Ryzen 7 7840HS    
-amd           AMD         fp32        fp64              3.0 ms / 5.61e-15     3.1 ms / 5.61e-15     3.2 ms / 5.61e-15         0.98x (gpu)       AMD Ryzen 7 7840HS    
-amd           AMD         w8a16       fp16                     n/a                   n/a                   n/a                    n/a           AMD Ryzen 7 7840HS    
-apple         Apple       fp16        fp32              30.9 ms / 2.71e-03    36.3 ms / 2.71e-03    12.3 ms / 2.71e-03        2.51x (npu)       Apple M4              
-apple         Apple       fp32        fp64              1.0 ms / 6.38e-15     21.9 ms / 6.38e-15    2.0 ms / 1.40e-02         0.51x (npu)       Apple M4              
-apple         Apple       w8a16       fp16                     n/a                   n/a            0.2 ms / 1.88e-01             n/a           Apple M4              
-snapdragon    Qualcomm    fp16        fp32                     n/a            4.3 ms / 2.71e-03     5.4 ms / 2.71e-03             n/a           Snapdragon X1P64100   
-snapdragon    Qualcomm    fp32        fp64                     n/a            2.5 ms / 5.61e-15     3.5 ms / 5.61e-15             n/a           Snapdragon X1P64100   
-snapdragon    Qualcomm    w8a16       fp16                     n/a                   n/a                   n/a                    n/a           Snapdragon X1P64100   
-======================================================================================================================================================================
-```
+| device | vendor | native | target (emu) | cpu | gpu | npu | tpu | best speedup vs CPU | product |
+|---|---|---|---|---|---|---|---|---|---|
+| amd | AMD | fp16 | fp32 | 6.3 ms / 2.71e-03 | 4.2 ms / 2.71e-03 | 4.8 ms / 2.71e-03 | n/a | 1.51x (gpu) | AMD Ryzen 7 7840HS |
+| amd | AMD | fp32 | fp64 | 3.0 ms / 5.61e-15 | 3.1 ms / 5.61e-15 | 3.2 ms / 5.61e-15 | n/a | 0.98x (gpu) | AMD Ryzen 7 7840HS |
+| amd | AMD | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | AMD Ryzen 7 7840HS |
+| apple | Apple | fp16 | fp32 | 30.9 ms / 2.71e-03 | 36.3 ms / 2.71e-03 | 12.3 ms / 2.71e-03 | n/a | 2.51x (npu) | Apple M4 |
+| apple | Apple | fp32 | fp64 | 1.0 ms / 6.38e-15 | 21.9 ms / 6.38e-15 | 2.0 ms / 1.40e-02 | n/a | 0.51x (npu) | Apple M4 |
+| apple | Apple | w8a16 | fp16 | n/a | n/a | 0.2 ms / 1.88e-01 | n/a | n/a | Apple M4 |
+| snapdragon | Qualcomm | fp16 | fp32 | n/a | 4.3 ms / 2.71e-03 | 5.4 ms / 2.71e-03 | n/a | n/a | Snapdragon X1P64100 |
+| snapdragon | Qualcomm | fp32 | fp64 | n/a | 2.5 ms / 5.61e-15 | 3.5 ms / 5.61e-15 | n/a | n/a | Snapdragon X1P64100 |
+| snapdragon | Qualcomm | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | Snapdragon X1P64100 |
+| tpu | Google | fp16 | fp32 | 705.7 ms / 2.71e-03 | n/a | n/a | 64.3 ms / 2.71e-03 | 10.97x (tpu) | Google Cloud TPU v5e |
+| tpu | Google | fp32 | fp64 | 3.8 ms / 6.38e-15 | n/a | n/a | 60.5 ms / 6.38e-15 | 0.06x (tpu) | Google Cloud TPU v5e |
+
+
+The `tpu` column and `tpu` rows above come from `arch/tpu/results/results_tpu.json`
+(Google Cloud TPU v5e, JAX backend); on a Cloud TPU VM, `run_ozaki_tests.py`
+regenerates them automatically.
+
+## TFLOPS (derived from aggregated results)
+
+| device | vendor | native | target (emu) | cpu | gpu | npu | tpu | best speedup vs CPU | product |
+|---|---|---|---|---|---|---|---|---|---|
+| amd | AMD | fp16 | fp32 | 0.0053 | 0.0080 | 0.0070 | n/a | 1.51x (gpu) | AMD Ryzen 7 7840HS |
+| amd | AMD | fp32 | fp64 | 0.0112 | 0.0109 | 0.0104 | n/a | 0.98x (gpu) | AMD Ryzen 7 7840HS |
+| amd | AMD | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | AMD Ryzen 7 7840HS |
+| apple | Apple | fp16 | fp32 | 0.0011 | 0.0009 | 0.0027 | n/a | 2.51x (npu) | Apple M4 |
+| apple | Apple | fp32 | fp64 | 0.0322 | 0.0015 | 0.0165 | n/a | 0.51x (npu) | Apple M4 |
+| apple | Apple | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | Apple M4 |
+| snapdragon | Qualcomm | fp16 | fp32 | n/a | 0.0077 | 0.0062 | n/a | n/a | Snapdragon X1P64100 |
+| snapdragon | Qualcomm | fp32 | fp64 | n/a | 0.0137 | 0.0096 | n/a | n/a | Snapdragon X1P64100 |
+| snapdragon | Qualcomm | w8a16 | fp16 | n/a | n/a | n/a | n/a | n/a | Snapdragon X1P64100 |
+| tpu | Google | fp16 | fp32 | 0.0000 | n/a | n/a | 0.0005 | 10.97x (tpu) | Google Cloud TPU v5e |
+| tpu | Google | fp32 | fp64 | 0.0089 | n/a | n/a | 0.0006 | 0.06x (tpu) | Google Cloud TPU v5e |
 
 ## CPU native GEMM capability (reference)
 
@@ -269,18 +282,6 @@ CPU native GEMM capability (reference)
 ======================================================================================
 shape               precision   time (ms)     TFLOPS    cpu / product                 
 --------------------------------------------------------------------------------------
-256x256x256         fp16        49.58         0.001     Snapdragon X1P64100 (host)    
-256x256x256         fp32        3.73          0.009     Snapdragon X1P64100 (host)    
-256x256x256         fp64        6.78          0.005     Snapdragon X1P64100 (host)    
-1024x1024x1024      fp16        3169.73       0.001     Snapdragon X1P64100 (host)    
-1024x1024x1024      fp32        12.67         0.169     Snapdragon X1P64100 (host)    
-1024x1024x1024      fp64        31.58         0.068     Snapdragon X1P64100 (host)    
-1x1024x4096         fp16        22.70         0.000     Snapdragon X1P64100 (host)    
-1x1024x4096         fp32        7.48          0.001     Snapdragon X1P64100 (host)    
-1x1024x4096         fp64        7.89          0.001     Snapdragon X1P64100 (host)    
-1x4096x4096         fp16        198.24        0.000     Snapdragon X1P64100 (host)    
-1x4096x4096         fp32        7.91          0.004     Snapdragon X1P64100 (host)    
-1x4096x4096         fp64        12.64         0.003     Snapdragon X1P64100 (host)    
 256x256x256         fp16        73.69         0.000     AMD Ryzen 7 7840HS            
 256x256x256         fp32        0.30          0.114     AMD Ryzen 7 7840HS            
 256x256x256         fp64        0.26          0.128     AMD Ryzen 7 7840HS            
@@ -305,6 +306,18 @@ shape               precision   time (ms)     TFLOPS    cpu / product
 1x4096x4096         fp16        42.71         0.001     Apple M4                      
 1x4096x4096         fp32        0.96          0.035     Apple M4                      
 1x4096x4096         fp64        2.49          0.013     Apple M4                      
+256x256x256         fp16        51.45         0.001     Snapdragon X1P64100 (host)    
+256x256x256         fp32        4.77          0.007     Snapdragon X1P64100 (host)    
+256x256x256         fp64        1.26          0.027     Snapdragon X1P64100 (host)    
+1024x1024x1024      fp16        3566.33       0.001     Snapdragon X1P64100 (host)    
+1024x1024x1024      fp32        10.88         0.197     Snapdragon X1P64100 (host)    
+1024x1024x1024      fp64        21.14         0.102     Snapdragon X1P64100 (host)    
+1x1024x4096         fp16        28.74         0.000     Snapdragon X1P64100 (host)    
+1x1024x4096         fp32        6.65          0.001     Snapdragon X1P64100 (host)    
+1x1024x4096         fp64        3.37          0.002     Snapdragon X1P64100 (host)    
+1x4096x4096         fp16        203.77        0.000     Snapdragon X1P64100 (host)    
+1x4096x4096         fp32        10.91         0.003     Snapdragon X1P64100 (host)    
+1x4096x4096         fp64        10.31         0.003     Snapdragon X1P64100 (host)    
 ======================================================================================
 ```
 

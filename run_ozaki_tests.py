@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""High-level wrapper: create/use a venv-<arch> and run platform Ozaki tests."""
+"""High-level wrapper: create/use a venv-<arch> and run platform Ozaki tests.
+
+On Linux, a JAX-visible Cloud TPU is detected automatically and the TPU
+scheme harness in arch/tpu/ is added to the platform test list.
+"""
 import os
 import sys
 import platform
@@ -25,7 +29,31 @@ def _is_arm_machine(machine):
     return m in ("arm64", "aarch64", "armv7l", "armv8l") or "arm" in m or "aarch" in m
 
 
-def platform_tests(system=None, machine=None):
+TPU_TESTS = ["arch/tpu/run_tests_tpu.py"]
+DEFAULT_VENV_MODULES = ("numpy", "onnx", "onnxruntime")
+TPU_VENV_MODULES = ("numpy", "jax")
+_TPU_PROBE = (
+    "import jax, sys; "
+    "sys.exit(0 if any(d.platform.lower() == 'tpu' for d in jax.devices()) else 1)"
+)
+_TPU_AVAILABLE = None
+
+
+def _tpu_available():
+    """True when JAX can see a TPU device (cached; isolated in a subprocess)."""
+    global _TPU_AVAILABLE
+    if _TPU_AVAILABLE is None:
+        try:
+            res = subprocess.run([sys.executable, "-c", _TPU_PROBE],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, timeout=120)
+            _TPU_AVAILABLE = res.returncode == 0
+        except Exception:
+            _TPU_AVAILABLE = False
+    return _TPU_AVAILABLE
+
+
+def platform_tests(system=None, machine=None, detect_tpu=True):
     """Return the Ozaki test scripts appropriate for the current platform/arch."""
     if system is None:
         system = platform.system()
@@ -37,6 +65,10 @@ def platform_tests(system=None, machine=None):
             "arch/apple/w8a16_test.py",
         ]
     if system == "Linux":
+        # Cloud TPU VMs are Linux hosts; only run the TPU harness when JAX
+        # actually sees a TPU device.
+        if detect_tpu and _tpu_available():
+            return list(TPU_TESTS)
         return []
     if system == "Windows":
         # Snapdragon / other ARM Windows parts use the QNN (htp/gpu) harness;
@@ -55,22 +87,24 @@ def platform_tests(system=None, machine=None):
 
 PLATFORM_TESTS = {
     "Darwin": platform_tests("Darwin"),
-    "Linux": [],
+    # TPU tests are detected at runtime in platform_tests()/main(); probing
+    # JAX while importing this module would be slow and side-effectful.
+    "Linux": platform_tests("Linux", detect_tpu=False),
     "Windows": platform_tests("Windows", platform.machine()),
 }
 
 
-def _venv_usable(py):
+def _venv_usable(py, modules=DEFAULT_VENV_MODULES):
     try:
-        subprocess.run([py, "-c", "import numpy, onnx, onnxruntime"], check=True,
+        subprocess.run([py, "-c", "import " + ", ".join(modules)], check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     except Exception:
         return False
 
 
-def ensure_venv():
-    if os.path.exists(VENV_PY) and _venv_usable(VENV_PY):
+def ensure_venv(modules=DEFAULT_VENV_MODULES):
+    if os.path.exists(VENV_PY) and _venv_usable(VENV_PY, modules):
         return VENV_PY
     if os.path.exists(VENV):
         try:
@@ -82,9 +116,20 @@ def ensure_venv():
     try:
         subprocess.run([sys.executable, "-m", "venv", "--system-site-packages", VENV], check=True)
     except Exception as e:
-        print(f"Failed to create venv ({e}); falling back to {sys.executable}")
-        return sys.executable
-    if not os.path.exists(VENV_PY) or not _venv_usable(VENV_PY):
+        # Minimal images (e.g. Cloud TPU VMs) may lack ensurepip. pip is not
+        # needed because --system-site-packages exposes the installed JAX/ORT.
+        print(f"Failed to create venv ({e}); retrying without pip")
+        try:
+            shutil.rmtree(VENV)
+        except Exception:
+            pass
+        try:
+            subprocess.run([sys.executable, "-m", "venv", "--system-site-packages",
+                            "--without-pip", VENV], check=True)
+        except Exception as e2:
+            print(f"Failed to create venv ({e2}); falling back to {sys.executable}")
+            return sys.executable
+    if not os.path.exists(VENV_PY) or not _venv_usable(VENV_PY, modules):
         print("venv python not found or unusable; falling back to current interpreter.")
         return sys.executable
     return VENV_PY
@@ -111,6 +156,7 @@ RESULT_FILES = [
     "arch/apple/results/results_mac.json",
     "arch/apple/results/w8a16_results.json",
     "arch/snapdragon/results/w8a16_results.json",
+    "arch/tpu/results/results_tpu.json",
 ]
 
 
@@ -122,6 +168,8 @@ PRECISION_MAP = {
 
 _DEVICES = []
 _OVERALL_ROWS = []
+_PRODUCTS = {}
+_VENDORS = {}
 
 
 def _device_for_result_file(rel):
@@ -132,6 +180,8 @@ def _device_for_result_file(rel):
         return "amd"
     if "snapdragon" in low:
         return "snapdragon"
+    if "tpu" in low:
+        return "tpu"
     if rel == "results/results.json":
         return "snapdragon"
     return os.path.splitext(os.path.basename(rel))[0]
@@ -142,6 +192,7 @@ def _product_for_device(device):
         "apple": "Apple M4",
         "snapdragon": "Snapdragon X1P64100",
         "amd": "AMD Ryzen 7 7840HS",
+        "tpu": "Google Cloud TPU",
         "host": "host",
     }.get(device, device)
 
@@ -169,15 +220,18 @@ def _vendor_for_device(device):
         "apple": "Apple",
         "snapdragon": "Qualcomm",
         "amd": "AMD",
+        "tpu": "Google",
         "host": "host",
     }.get(device, device)
 
 
 def collect_results():
-    global _DEVICES, _OVERALL_ROWS
+    global _DEVICES, _OVERALL_ROWS, _PRODUCTS, _VENDORS
     data = {}
     devices = []
     overall_rows = []
+    products = {}
+    vendors = {}
     for rel in RESULT_FILES:
         path = os.path.join(ROOT, rel)
         if not os.path.exists(path):
@@ -202,12 +256,16 @@ def collect_results():
             row_device = r.get("device", device)
             row_product = r.get("product", _product_for_device(row_device))
             row_vendor = r.get("vendor", _vendor_for_device(row_device))
+            products[row_device] = row_product
+            vendors[row_device] = row_vendor
             data.setdefault((row_device, scheme, backend), []).append((float(t), float(err)))
             devices.append(row_device)
             overall_rows.append(dict(r, device=row_device, vendor=row_vendor, product=row_product, source=rel))
 
     _DEVICES = sorted(set(d for d in devices if d != "host"))
     _OVERALL_ROWS = overall_rows
+    _PRODUCTS = products
+    _VENDORS = vendors
 
     # Save the overall (combined) results to results/.
     out_dir = os.path.join(ROOT, "results")
@@ -258,8 +316,10 @@ def print_summary():
     for device in devices:
         for scheme in schemes:
             target, native = PRECISION_MAP.get(scheme, (scheme, "?"))
-            product = _product_for_device(device)
-            vendor = _vendor_for_device(device)
+            # Prefer product/vendor metadata written by the harness (e.g. the
+            # detected Cloud TPU generation) over the static fallbacks.
+            product = _PRODUCTS.get(device, _product_for_device(device))
+            vendor = _VENDORS.get(device, _vendor_for_device(device))
             row = (device.ljust(device_w) + vendor.ljust(vendor_w) +
                    native.ljust(native_w) + target.ljust(target_w + 6))
             for backend in backends:
@@ -274,7 +334,7 @@ def print_summary():
             best = None
             best_dev = None
             if cpu_v is not None:
-                for b in ("gpu", "npu"):
+                for b in ("gpu", "npu", "tpu"):
                     v = agg.get((device, scheme, b))
                     if v is not None and v[0] > 0:
                         speedup = cpu_v[0] / v[0]
@@ -410,11 +470,14 @@ def main():
     machine = platform.machine()
     tests = platform_tests(system, machine)
     print(f"Platform: {system}  Arch: {ARCH}  Machine: {machine}")
+    if system == "Linux":
+        print(f"TPU: {'available (JAX)' if _tpu_available() else 'not detected'}")
     if not tests:
         print("No platform-specific Ozaki tests to run on this platform.")
         print_summary()
         return 0
-    py = ensure_venv()
+    modules = TPU_VENV_MODULES if any(t in TPU_TESTS for t in tests) else DEFAULT_VENV_MODULES
+    py = ensure_venv(modules)
     ok = True
     for t in tests:
         ok = run(py, t) and ok
